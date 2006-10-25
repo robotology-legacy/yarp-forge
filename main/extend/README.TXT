@@ -1,4 +1,15 @@
 
+========================================================================
+extend
+
++ Takes a sequence of numbers, trys to find a pattern, and
+  optionally guesses at the future of that sequence.
+
++ Copyright 2006 Paul Fitzpatrick
++ CopyPolicy: GNU Public License version 2
+
+========================================================================
+
 Examples of usage:
 
 $ ./extend 01010
