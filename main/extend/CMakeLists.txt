@@ -1,8 +1,11 @@
 
 PROJECT(extend)
 
+SET(YARP_DIR "$ENV{YARP_BUILD}" CACHE LOCATION "where is yarp?")
+
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH})
 
+FIND_PACKAGE(YARP REQUIRED)
 FIND_PACKAGE(Boost REQUIRED)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS} ${BOOST_INCLUDE_DIRS})
@@ -10,4 +13,4 @@ LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 ADD_DEFINITIONS(${BOOST_DEFINITIONS})
 LINK_LIBRARIES(${BOOST_LIBRARIES})
 
-ADD_EXECUTABLE(extend main.cpp fetch.cpp condition.cpp fetch.h condition.h)
+ADD_EXECUTABLE(extend main.cpp fetch.cpp condition.cpp fetch.h condition.h yarp.h yarp.cpp)

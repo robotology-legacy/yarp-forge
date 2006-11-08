@@ -2,7 +2,7 @@
 ========================================================================
 extend
 
-+ Takes a sequence of numbers, trys to find a pattern, and
++ Takes a sequence of numbers, tries to find a pattern, and
   optionally guesses at the future of that sequence.
 
 + Copyright 2006 Paul Fitzpatrick
