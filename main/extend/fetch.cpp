@@ -131,49 +131,55 @@ static void checkSequence(string seq) {
 std::string localizePattern(std::string pattern) {
   DBG cout << "localizing pattern " << pattern << endl;
 
-  boost::regex_constants::syntax_option_type flags = 
-    boost::regex_constants::perl;
-  boost::regex re;
-  boost::smatch what;
+  try {
 
-
-  re.assign("\\[\\]", flags);
-  pattern = regex_replace(pattern,re,"");
-  re.assign("\\(", flags);
-  pattern = regex_replace(pattern,re,"\\(\\?\\:");
-  re.assign("\\[", flags);
-  pattern = regex_replace(pattern,re,"\\(\\[");
-  re.assign("\\]", flags);
-  pattern = regex_replace(pattern,re,"\\]\\)");
-  re.assign("[[^\\]]*\\.[^\\]]*\\]", flags);
-  pattern = regex_replace(pattern,re,".");
-  re.assign("(?<!\\\\)([0-9])", flags);
-  pattern = regex_replace(pattern,re,"\\[$1~\\]");
-  re.assign("(\\\\[0-9]+)", flags);
-  pattern = regex_replace(pattern,re,"\\(\\?\\:~\\|$1\\)");
-
-  re.assign("\\[((\\[[^\\]]*\\])*)\\]", flags);
-  while (regex_search(pattern,what,re)) {
-    string src = what[1];
-    DBG cout << "src is " << src << endl;
-
-    re.assign("[\\[\\]]", flags);
-    string dest = regex_replace(src,re,"");
-
-    re.assign("\\[\\Q" + src + "\\E\\]", flags);
-    pattern = regex_replace(pattern,re,"\\["+dest+"\\]");
+    boost::regex_constants::syntax_option_type flags = 
+      boost::regex_constants::perl;
+    boost::regex re;
+    boost::smatch what;
+    
+    
+    re.assign("\\[\\]", flags);
+    pattern = regex_replace(pattern,re,"");
+    re.assign("\\(", flags);
+    pattern = regex_replace(pattern,re,"\\(\\?\\:");
+    re.assign("\\[", flags);
+    pattern = regex_replace(pattern,re,"\\(\\[");
+    re.assign("\\]", flags);
+    pattern = regex_replace(pattern,re,"\\]\\)");
+    re.assign("[[^\\]]*\\.[^\\]]*\\]", flags);
+    pattern = regex_replace(pattern,re,".");
+    re.assign("(?<!\\\\)([0-9])", flags);
+    pattern = regex_replace(pattern,re,"\\[$1~\\]");
+    re.assign("(\\\\[0-9]+)", flags);
+    pattern = regex_replace(pattern,re,"\\(\\?\\:~\\|$1\\)");
+    
+    re.assign("\\[((\\[[^\\]]*\\])*)\\]", flags);
+    while (regex_search(pattern,what,re)) {
+      string src = what[1];
+      DBG cout << "src is " << src << endl;
+      
+      re.assign("[\\[\\]]", flags);
+      string dest = regex_replace(src,re,"");
+      
+      re.assign("\\[\\Q" + src + "\\E\\]", flags);
+      pattern = regex_replace(pattern,re,"\\["+dest+"\\]");
+    }
+    
+    re.assign("(\\\\([0-9]))", flags);
+    while (regex_search(pattern,what,re)) {
+      string num = what[2];
+      string num2 = str(format("%d") % (1+atoi(num.c_str())));
+      re.assign("\\\\" + num, flags);
+      pattern = regex_replace(pattern,re,"^" + num2);
+    }
+    
+    re.assign("\\^", flags);
+    pattern = regex_replace(pattern,re,"\\\\");
+  } catch(boost::regex_error& regErr) {
+    cerr << "regular expression failed: " << regErr.what() << endl;
+    pattern = "(0)*";
   }
-
-  re.assign("(\\\\([0-9]))", flags);
-  while (regex_search(pattern,what,re)) {
-    string num = what[2];
-    string num2 = str(format("%d") % (1+atoi(num.c_str())));
-    re.assign("\\\\" + num, flags);
-    pattern = regex_replace(pattern,re,"^" + num2);
-  }
-
-  re.assign("\\^", flags);
-  pattern = regex_replace(pattern,re,"\\\\");
 
   DBG cout << "localized pattern " << pattern << endl;
 
@@ -210,15 +216,19 @@ list<string> extendSequence(const list<string>& seq,
     for (int i=0; i<input.length(); i++) {
       string ref = activeSeq+input[i]+"~~~~~~~~~~~~~~~~~~";
       DBG cout << "pattern " << pat << " against " << ref << endl;
-      if (regex_search(ref,what,re)) {
-	string m = what[0];
-	if (m.length()>activeSeq.length()) {
-	  string bit;
-	  bit += input[i];
-	  string ext = activeSeq + n.norm(bit);
-	  DBG cout << "  got something " << ext << endl;
-	  results.push_back(string(ext));
+      try {
+	if (regex_search(ref,what,re)) {
+	  string m = what[0];
+	  if (m.length()>activeSeq.length()) {
+	    string bit;
+	    bit += input[i];
+	    string ext = activeSeq + n.norm(bit);
+	    DBG cout << "  got something " << ext << endl;
+	    results.push_back(string(ext));
+	  }
 	}
+      } catch(boost::regex_error& regErr) {
+	cerr << "regular expression failed: " << regErr.what() << endl;
       }
     }
   }
