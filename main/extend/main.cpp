@@ -42,25 +42,7 @@ int main(int argc, char *argv[]) {
 	     
     }
   } else {
-#if 1
-    double data[] = {
-      0, 1, 0, 3, 2, 3, 
-      20, 21, 19, 
-      0, 1, 0, 1, 5, 2, 4,
-      22, 17, 18, 24,
-      -999
-    };
-#else
-    double data[] = {
-      0, 1, 2, 3, 4, 5, 6, 6, 8, 9, 10, -999
-    };
-#endif
-    double *at = data;
     Sequence seq;
-    //while (*at>=-0.5) {
-    //seq.add(*at);
-    //at++;
-    //}
 
     vector<double> lst = getSeq();
     for (int i=0; i<lst.size(); i++) {
@@ -69,10 +51,6 @@ int main(int argc, char *argv[]) {
 
     Unit unit(seq.specialize(seq));
 
-    //cout << "piecewise for " << seq.toString() << endl;
-    //PiecewiseSequence ps;
-    //ps.apply(seq);
-    //cout << "Unit is: " << ps.toString() << endl;
     Sequence fut;
     fut.takeFuture(unit,100);
     cout << fut.toString() << endl;
