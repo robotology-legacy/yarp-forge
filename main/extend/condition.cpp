@@ -16,8 +16,8 @@
 using namespace std;
 using namespace boost;
 
-//#define DBG if (1) 
-#define DBG if (0) 
+#define DBG if (1) 
+//#define DBG if (0) 
 
 
 bool Sequence::extend(int len) {
@@ -177,6 +177,7 @@ void PiecewiseSequence::apply(const IUnit& unit) {
   // then decide on their identity
 
   vector<Histogram> hists;
+  vector<Histogram> histsMerged;
   Histogram hist;
   vector<int> segment(past.size());
   segment[0] = 0;
@@ -224,12 +225,20 @@ void PiecewiseSequence::apply(const IUnit& unit) {
     hists.push_back(hist);
     hist.clear();
   }
+  Histogram *hprev = &(hists[0]);
   for (int i=0; i<hists.size(); i++) {
     Histogram& h = hists[i];
     DBG cerr << "Group mean " << h.getMean() << " std " << h.getDeviation() << 
       endl;
+    DBG cerr << "size " << h.getLength() << endl;
+    if (h.getLength()<=2 && h.getDeviation()<fabs(h.getMean())*0.1) {
+      h = *hprev;
+      DBG cerr << "crunch" << endl;
+    }
+    hprev = &h;
   }
   map<int, int> clusterCode;
+  map<int, int> clusterCodeMerged;
   for (int i=0; i<hists.size(); i++) {
     clusterCode[i] = i;
   }
@@ -273,6 +282,7 @@ void PiecewiseSequence::apply(const IUnit& unit) {
   map<int, int> label;
   map<int, int> revLabel;
   int ct = 0;
+  int prevCode = -1;
   for (int i=0; i<hists.size(); i++) {
     int localCode = clusterCode[i];
     if (label.find(localCode)==label.end()) {
@@ -280,13 +290,23 @@ void PiecewiseSequence::apply(const IUnit& unit) {
       revLabel[ct] = localCode;
       ct++;
     }
+    if (localCode!=prevCode) {
+      histsMerged.push_back(Histogram());
+    }
+    Histogram& hist = histsMerged.back();
+    for (int j=0; j<hists[i].getLength(); j++) {
+      hist.add(hists[i].getPast(j));
+    }
+    clusterCodeMerged[histsMerged.size()-1] = localCode;
+    prevCode = localCode;
   }  
   int groupCount = ct;
   DBG cerr << "sequence: ";
   sym.clear();
-  for (int i=0; i<hists.size(); i++) {
-    sym.add(label[clusterCode[i]]);
-    DBG cerr << label[clusterCode[i]] << " ";
+  for (int i=0; i<histsMerged.size(); i++) {
+    int nextLabel = label[clusterCodeMerged[i]];
+    sym.add(nextLabel);
+    DBG cerr << label[clusterCodeMerged[i]] << " ";
   }
   DBG cerr << endl;
   DBG cerr << "Unit is: " << toString() << endl;
@@ -306,11 +326,12 @@ void PiecewiseSequence::apply(const IUnit& unit) {
     Histogram& h = globalHists[idx];
     h.add(past[i]);
   }
-  for (int i=0; i<hists.size(); i++) {
-    int len = hists[i].getLength();
+
+  for (int i=0; i<histsMerged.size(); i++) {
+    int len = histsMerged[i].getLength();
     DBG cerr << "add len " << len << endl;
-    lengthHists[label[clusterCode[i]]].add(len);
-    lengthSeqs[label[clusterCode[i]]].add(len);
+    lengthHists[label[clusterCodeMerged[i]]].add(len);
+    lengthSeqs[label[clusterCodeMerged[i]]].add(len);
   }
 
   parts = vector<Piece>(groupCount);

@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     Unit unit(seq.specialize(seq));
 
     Sequence fut;
-    fut.takeFuture(unit,100);
+    fut.takeFuture(unit,lst.size()*5);
     cout << fut.toString() << endl;
 
   }
