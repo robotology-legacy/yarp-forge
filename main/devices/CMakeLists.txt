@@ -13,18 +13,18 @@ FIND_PACKAGE(YARP)
 # Start a project.
 PROJECT(${KEYWORD})
 
+# Search for source code.
+FILE(GLOB folder_source *.cpp *.cc *.c)
+FILE(GLOB folder_header *.h)
+SOURCE_GROUP("Source Files" FILES ${folder_source})
+SOURCE_GROUP("Header Files" FILES ${folder_header})
+
 # Check if there are any plugin device subdirectories.
 # Device subdirectories contain a config.cmake file.
 FILE(GLOB_RECURSE device_config config.cmake)
 IF (device_config)
   YarpDevice(${device_config})
 ENDIF (device_config)
-
-# Search for source code.
-FILE(GLOB_RECURSE folder_source *.cpp *.cc *.c)
-FILE(GLOB_RECURSE folder_header *.h)
-SOURCE_GROUP("Source Files" FILES ${folder_source})
-SOURCE_GROUP("Header Files" FILES ${folder_header})
 
 # Automatically add include directories if needed.
 FOREACH(header_file ${folder_header})
