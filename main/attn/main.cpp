@@ -10,8 +10,23 @@
 
 #include <yarp/os/all.h>
 #include <yarp/sig/all.h>
+
+#include <deque>
+#include <vector>
+
 using namespace yarp::os;
 using namespace yarp::sig;
+using namespace std;
+
+
+class Salience {
+public:
+    virtual void apply(ImageOf<PixelRgb>& src, 
+                       ImageOf<PixelRgb>& dest,
+                       ImageOf<PixelFloat>& sal) {
+    }
+};
+
 
 // following Laurent Itti, Brian Scassellati.
 class ColorSalience {
@@ -60,6 +75,111 @@ public:
 };
 
 
+class MotionSalience {
+private:
+    deque<ImageOf<PixelRgb> > history;
+    int targetLen;
+public:
+    MotionSalience() {
+        targetLen = 10;
+    }
+
+    void apply(ImageOf<PixelRgb>& src, 
+               ImageOf<PixelRgb>& dest,
+               ImageOf<PixelFloat>& sal) {
+        dest.resize(src);
+        sal.resize(src);
+        sal.copy(src);
+
+        history.push_back(src);
+
+        ImageOf<PixelRgb>& past = history.front();
+
+        IMGFOR(src,x,y) {
+            PixelRgb& pix1 = src(x,y);
+            PixelRgb& pix0 = past(x,y);
+            float dr = pix0.r-pix1.r;
+            float dg = pix0.g-pix1.g;
+            float db = pix0.b-pix1.b;
+            float v = dr*dr + dg*dg + db*db;
+            float v2 = v*10;
+            float v3 = v/10;
+            if (v>255) { v = 255; }
+            sal(x,y) = 1;
+            PixelRgb& pixd = dest(x,y);
+            if (v2>255) { v2 = 255; }
+            if (v3>255) { v3 = 255; }
+            pixd.r = (unsigned char)v;
+            pixd.g = (unsigned char)v2;
+            pixd.b = (unsigned char)v3;
+        }
+
+        if (history.size()>targetLen) {
+            history.pop_front();
+        }
+    }
+};
+
+
+class RuddySalience {
+private:
+    float transformWeights[6];
+    float transformDelta;
+public:
+    RuddySalience() {
+        transformWeights[0] = 0.21742;
+        transformWeights[1] = -0.36386;
+        transformWeights[2] = 0.90572;
+        transformWeights[3] = 0.00096756;
+        transformWeights[4] = -0.00050073;
+        transformWeights[5] = -0.00287;
+        transformDelta = -50.1255;
+    }
+
+    float eval(PixelRgb& pix) {
+        float r = pix.r;
+        float g = pix.g;
+        float b = pix.b;
+        bool mask = (r>g) && (r<3*g) && (r>0.9*b) && (r<3*b) && (r>70);
+        float judge = 0;
+        if (mask) {
+            float r2 = r*r;
+            float g2 = g*g;
+            float b2 = b*b;
+            judge = 
+                r*transformWeights[0] +
+                g*transformWeights[1] +
+                b*transformWeights[2] +
+                r2*transformWeights[3] +
+                g2*transformWeights[4] +
+                b2*transformWeights[5] +
+                transformDelta;
+            judge *= 1.5;
+	    }
+        if (judge<0) judge = 0;
+        if (judge>255) judge = 255;
+        return judge;
+    }
+
+    void apply(ImageOf<PixelRgb>& src, 
+               ImageOf<PixelRgb>& dest,
+               ImageOf<PixelFloat>& sal) {
+        dest.resize(src);
+        sal.resize(src);
+        IMGFOR(src,x,y) {
+            PixelRgb pix = src(x,y);
+            sal(x,y) = eval(pix);
+        }
+        dest.copy(sal);
+    }
+};
+
+
+class GroupSalience {
+public:
+};
+
+
 int main(int argc, char *argv[]) {
     BufferedPort<ImageOf<PixelRgb> > imgPort;
     ImageOf<PixelRgb> result;
@@ -67,10 +187,12 @@ int main(int argc, char *argv[]) {
     imgPort.open("/attn");
     Network::connect("/fakebot/camera","/attn");
     Network::connect("/attn","/v2");
+    MotionSalience ms;
+    ColorSalience cs;
+    RuddySalience rs;
     while (true) {
         ImageOf<PixelRgb> *img = imgPort.read();
-        ColorSalience cs;
-        cs.apply(*img,imgPort.prepare(),sal);
+        rs.apply(*img,imgPort.prepare(),sal);
         imgPort.write();
     }
     return 0;
